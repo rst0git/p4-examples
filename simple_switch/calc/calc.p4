@@ -29,12 +29,16 @@
  *   '|' (0x7c) Result = OperandA | OperandB
  *   '^' (0x5e) Result = OperandA ^ OperandB
  *
- * The device receives a packet, performs the requested operation, fills in the 
- * result and sends the packet back out of the same port it came in on, while 
+ * The device receives a packet, performs the requested operation, fills in the
+ * result and sends the packet back out of the same port it came in on, while
  * swapping the source and destination addresses.
  *
  * If an unknown operation is specified or the header is not valid, the packet
- * is dropped 
+ * is dropped.
+ *
+ * Some hardware targets do not have an instruction to implement a << b,
+ * so we use a lookup table to perform a shift by a constant number of bits.
+ * The lookup on the second operand tells us how many.
  */
 
 #include <core.p4>
@@ -45,7 +49,7 @@
  */
 
 /*
- * Standard ethernet header 
+ * Standard ethernet header
  */
 header ethernet_t {
     bit<48> dstAddr;
@@ -54,7 +58,7 @@ header ethernet_t {
 }
 
 /*
- * This is a custom protocol header for the calculator. We'll use 
+ * This is a custom protocol header for the calculator. We'll use
  * ethertype 0x1234 for is (see parser)
  */
 const bit<16> P4CALC_ETYPE = 0x1234;
@@ -88,12 +92,12 @@ struct headers {
 }
 
 /*
- * All metadata, globally used in the program, also  needs to be assembed 
- * into a single struct. As in the case of the headers, we only need to 
+ * All metadata, globally used in the program, also  needs to be assembed
+ * into a single struct. As in the case of the headers, we only need to
  * declare the type, but there is no need to instantiate it,
  * because it is done "by the architecture", i.e. outside of P4 functions
  */
- 
+
 struct metadata {
     /* In our case it is empty */
 }
@@ -113,7 +117,7 @@ parser MyParser(packet_in packet,
             default      : accept;
         }
     }
-    
+
     state check_p4calc {
         transition select(packet.lookahead<p4calc_t>().p,
         packet.lookahead<p4calc_t>().four,
@@ -122,7 +126,7 @@ parser MyParser(packet_in packet,
             default                          : accept;
         }
     }
-    
+
     state parse_p4calc {
         packet.extract(hdr.p4calc);
         transition accept;
@@ -143,34 +147,34 @@ control MyVerifyChecksum(inout headers hdr,
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-    
+
     action send_back(bit<32> result) {
         bit<48> tmp;
 
         /* Put the result back in */
         hdr.p4calc.res = result;
-        
+
         /* Swap the MAC addresses */
         tmp = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = hdr.ethernet.srcAddr;
         hdr.ethernet.srcAddr = tmp;
-        
+
         /* Send the packet back to the port it came from */
         standard_metadata.egress_spec = standard_metadata.ingress_port;
     }
-    
+
     action operation_add() {
         send_back(hdr.p4calc.operand_a + hdr.p4calc.operand_b);
     }
-    
+
     action operation_sub() {
         send_back(hdr.p4calc.operand_a - hdr.p4calc.operand_b);
     }
-    
+
     action operation_and() {
         send_back(hdr.p4calc.operand_a & hdr.p4calc.operand_b);
     }
-    
+
     action operation_or() {
         send_back(hdr.p4calc.operand_a | hdr.p4calc.operand_b);
     }
@@ -182,7 +186,7 @@ control MyIngress(inout headers hdr,
     action operation_drop() {
         mark_to_drop(standard_metadata);
     }
-    
+
     table calculate {
         key = {
             hdr.p4calc.op        : exact;
@@ -205,7 +209,7 @@ control MyIngress(inout headers hdr,
         }
     }
 
-            
+
     apply {
         if (hdr.p4calc.isValid()) {
             calculate.apply();
