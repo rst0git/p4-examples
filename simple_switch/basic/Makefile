@@ -5,7 +5,7 @@ compile:
 	p4c-bm2-ss --p4v 16 --p4runtime-files build/basic.p4.p4info.txt -o build/basic.json basic.p4
 
 run: compile
-	sudo simple_switch_grpc -i 0@veth0-0 -i 1@veth1-0 --log-console --thrift-port 9090 build/basic.json -- --enable-swap
+	sudo simple_switch_grpc -i 0@veth0-0 -i 1@veth1-0 --log-console --thrift-port 9090 build/basic.json
 
 cli:
 	sudo simple_switch_CLI

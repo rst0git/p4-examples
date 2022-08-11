@@ -5,7 +5,7 @@ compile:
 	p4c-bm2-ss --p4v 16 --p4runtime-files build/main.p4.p4info.txt -o build/main.json main.p4
 
 run: compile
-	sudo simple_switch_grpc -i 0@veth0-0 -i 1@veth1-0 --log-console --thrift-port 9090 build/main.json -- --enable-swap
+	sudo simple_switch_grpc -i 0@veth0-0 -i 1@veth1-0 --log-console --thrift-port 9090 build/main.json
 
 veth:
 	sudo ip link add veth0-0 type veth peer name veth0-1
