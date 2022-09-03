@@ -2,10 +2,18 @@ all: run
 
 compile:
 	mkdir -p build
+	mkdir -p logs
 	p4c-bm2-ss --p4v 16 --p4runtime-files build/main.p4.p4info.txt -o build/main.json main.p4
 
 run: compile
-	sudo simple_switch_grpc -i 0@veth0-0 -i 1@veth1-0 --log-console --thrift-port 9090 build/main.json
+	sudo simple_switch_grpc \
+		-i 0@veth0-0 \
+		-i 1@veth1-0 \
+		--log-console \
+		--thrift-port 9090 \
+		build/main.json \
+		-- \
+		--grpc-server-addr 0.0.0.0:9551
 
 veth:
 	sudo ip link add veth0-0 type veth peer name veth0-1
@@ -20,6 +28,6 @@ veth:
 	sudo ethtool -K veth1-1 tx off
 
 clean:
-	rm -rf build/
+	rm -rf build/ logs/
 	sudo ip link del veth0-0
 	sudo ip link del veth1-0
