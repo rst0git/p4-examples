@@ -41,3 +41,5 @@ clean:
 	rm -rf build/
 	sudo ip link del veth0-0
 	sudo ip link del veth1-0
+
+.PHONY: all compile run cli veth clean
